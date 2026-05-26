@@ -1,4 +1,5 @@
 import { AllocationDonut } from "@/components/AllocationDonut";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { OverheatedSignalsCard } from "@/components/OverheatedSignalsCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -73,9 +74,10 @@ export default async function DashboardPage() {
 
   return (
     <section className="space-y-[18px]">
+      <AutoRefresh intervalSec={30} />
       <PageHeader
         title="Dashboard"
-        subtitle="QQQ drawdown 기반 매수 단계 추적 · TQQQ/QLD 보유"
+        subtitle="QQQ drawdown 기반 매수 단계 추적 · TQQQ/QLD 보유 · 30초 auto-refresh"
         timestamp={portfolio?.fetched_at}
       />
 

@@ -1,4 +1,5 @@
 import { AlertsClient } from "./AlertsClient";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { Kpi } from "@/components/Kpi";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchAlerts, type AlertRow } from "@/lib/api";
@@ -24,9 +25,10 @@ export default async function AlertsPage() {
 
   return (
     <section className="space-y-[18px]">
+      <AutoRefresh intervalSec={30} />
       <PageHeader
         title="Alerts"
-        subtitle="발송된 알림 이력. 행 클릭 시 Slack 메시지 + 페이로드 확장."
+        subtitle="발송된 알림 이력. 행 클릭 시 Slack 메시지 + 페이로드 확장. 30초 auto-refresh."
         timestamp={latestTs}
       />
 
