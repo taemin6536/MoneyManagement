@@ -1,0 +1,37 @@
+# Fly.io app definition — frontend (Next.js standalone)
+#
+# Deploy from `frontend/` directory:
+#   cd frontend && fly launch --no-deploy --copy-config   (first time only)
+#   fly secrets set NEXT_PUBLIC_API_BASE_URL=https://moneymangement-api.fly.dev ...
+#   fly deploy
+#
+# Sleeps when idle to save credit. SSR will spin it back up on visit.
+
+app = "moneymangement-web"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile.prod"
+
+[env]
+  NODE_ENV = "production"
+  TZ = "Asia/Seoul"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 200
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

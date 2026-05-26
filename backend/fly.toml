@@ -1,0 +1,53 @@
+# Fly.io app definition — backend (FastAPI + APScheduler)
+#
+# Deploy from `backend/` directory:
+#   cd backend && fly launch --no-deploy --copy-config   (first time only)
+#   fly secrets set DATABASE_URL=... KIS_APP_KEY=... ...
+#   fly deploy
+#
+# Single-machine, always-on. APScheduler runs in-process so we never want
+# multiple instances (would duplicate polling + alerts).
+
+app = "moneymangement-api"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile.prod"
+
+[deploy]
+  # Run alembic migrations before each release goes live.
+  release_command = "alembic upgrade head"
+
+[env]
+  APP_ENV = "production"
+  APP_PORT = "8000"
+  TZ = "Asia/Seoul"
+  KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
+  KIS_ACCOUNT_PRODUCT_CODE = "01"
+  KIS_PAPER_MODE = "false"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Always-on: scheduler must keep running for 1-min polling + daily report.
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 50
+    hard_limit = 100
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
