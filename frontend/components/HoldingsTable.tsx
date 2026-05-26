@@ -38,11 +38,11 @@ export function HoldingsTable({ data, sparklines }: Props) {
           <thead className="text-[11px] uppercase tracking-[0.6px] text-mm-text-dim">
             <tr>
               <th className="text-left py-2">Symbol</th>
-              <th className="text-right py-2">Qty</th>
-              <th className="text-right py-2">Avg · Last</th>
+              <th className="text-right py-2 hidden sm:table-cell">Qty</th>
+              <th className="text-right py-2 hidden md:table-cell">Avg · Last</th>
               <th className="text-right py-2">Market Value</th>
               <th className="text-right py-2">P/L</th>
-              <th className="text-right py-2 hidden md:table-cell">30D</th>
+              <th className="text-right py-2 hidden lg:table-cell">30D</th>
             </tr>
           </thead>
           <tbody>
@@ -77,17 +77,17 @@ export function HoldingsTable({ data, sparklines }: Props) {
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 text-right font-mono tabular-nums">
+                  <td className="py-3 text-right font-mono tabular-nums hidden sm:table-cell">
                     {Number(h.quantity).toFixed(4).replace(/\.?0+$/, "")}
                   </td>
-                  <td className="py-3 text-right font-mono tabular-nums">
+                  <td className="py-3 text-right font-mono tabular-nums hidden md:table-cell">
                     <div className="text-mm-text-dim text-[12px]">{usd(h.avg_price)}</div>
                     <div className="font-semibold">{usd(h.current_price)}</div>
                   </td>
                   <td className="py-3 text-right font-mono tabular-nums">
                     <div className="font-semibold">{usd(h.eval_usd)}</div>
                     <div className="text-[11px] text-mm-text-mute">
-                      {evalKrw === null ? "—" : krw(evalKrw)} · {weightOfBook.toFixed(1)}% of book
+                      {evalKrw === null ? "—" : krw(evalKrw)} · {weightOfBook.toFixed(1)}%
                     </div>
                   </td>
                   <td className={`py-3 text-right font-mono tabular-nums ${plColor}`}>
@@ -97,7 +97,7 @@ export function HoldingsTable({ data, sparklines }: Props) {
                       <div className="text-[11px]">{krw(plKrw)}</div>
                     )}
                   </td>
-                  <td className="py-3 text-right hidden md:table-cell">
+                  <td className="py-3 text-right hidden lg:table-cell">
                     <div className="inline-block">
                       <Sparkline values={sparklines[h.symbol] ?? []} width={90} height={28} />
                     </div>
@@ -108,13 +108,13 @@ export function HoldingsTable({ data, sparklines }: Props) {
             {cashUsd > 0 && (
               <tr className="border-t border-mm-border-soft">
                 <td className="py-3 text-mm-text-dim">Cash (USD)</td>
-                <td className="py-3 text-right font-mono text-mm-text-mute">—</td>
-                <td className="py-3 text-right font-mono text-mm-text-mute">—</td>
+                <td className="py-3 text-right font-mono text-mm-text-mute hidden sm:table-cell">—</td>
+                <td className="py-3 text-right font-mono text-mm-text-mute hidden md:table-cell">—</td>
                 <td className="py-3 text-right font-mono tabular-nums font-semibold">
                   {usd(cashUsd)}
                 </td>
                 <td className="py-3 text-right font-mono text-mm-text-mute">—</td>
-                <td className="py-3 text-right text-[11px] text-mm-text-mute hidden md:table-cell">
+                <td className="py-3 text-right text-[11px] text-mm-text-mute hidden lg:table-cell">
                   {totalUsd > 0 ? ((cashUsd / totalUsd) * 100).toFixed(1) + "% of total" : "—"}
                 </td>
               </tr>

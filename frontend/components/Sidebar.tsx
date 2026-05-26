@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import type { FxState } from "@/lib/api";
 import { SidebarFx } from "./SidebarFx";
@@ -39,10 +40,61 @@ export function Sidebar({
   fx: FxState | null;
 }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Close drawer on route change.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Lock body scroll while mobile drawer is open.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   return (
-    <aside className="w-[200px] shrink-0 bg-mm-bg-sub border-r border-mm-border flex flex-col px-3 py-[18px]">
-      {/* Logo block */}
+    <>
+      {/* Mobile hamburger trigger (≤ md hides sidebar by default) */}
+      <button
+        type="button"
+        aria-label="open menu"
+        onClick={() => setOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-30 w-10 h-10 rounded-md bg-mm-surface border border-mm-border flex items-center justify-center text-mm-text text-[18px] shadow-sm"
+      >
+        ☰
+      </button>
+
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          aria-hidden
+          onClick={() => setOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/55 backdrop-blur-[2px] z-40"
+        />
+      )}
+
+      <aside
+        className={`bg-mm-bg-sub border-r border-mm-border flex flex-col px-3 py-[18px]
+          w-[240px] md:w-[200px] shrink-0
+          fixed md:static top-0 left-0 bottom-0 z-50 md:z-auto
+          transition-transform duration-200 ease-out
+          ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+      >
+        {/* Close button — mobile only */}
+        <button
+          type="button"
+          aria-label="close menu"
+          onClick={() => setOpen(false)}
+          className="md:hidden absolute top-3 right-3 w-8 h-8 rounded-md border border-mm-border-soft text-mm-text-dim flex items-center justify-center"
+        >
+          ✕
+        </button>
+
+        {/* Logo block */}
       <div className="px-2 pb-4 mb-3 border-b border-mm-border-soft">
         <div className="flex items-center gap-2">
           <div
@@ -112,6 +164,7 @@ export function Sidebar({
         </div>
       </div>
     </aside>
+    </>
   );
 }
 

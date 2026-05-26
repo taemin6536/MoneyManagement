@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             buildTs={tsShort(new Date())}
             fx={fx}
           />
-          <main className="flex-1 overflow-y-auto px-[26px] py-[22px]">
+          <main className="flex-1 overflow-y-auto px-4 pt-16 pb-6 md:px-[26px] md:pt-[22px] md:pb-[22px]">
             {children}
           </main>
         </div>

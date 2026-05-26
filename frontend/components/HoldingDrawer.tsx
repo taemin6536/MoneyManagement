@@ -57,7 +57,7 @@ export function HoldingDrawer({ holding, fxRate, onClose }: Props) {
         }`}
       />
       <aside
-        className={`fixed top-0 right-0 bottom-0 w-[480px] max-w-[100vw] z-[101]
+        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[480px] max-w-[100vw] z-[101]
           bg-mm-surface border-l border-mm-border shadow-[-20px_0_60px_rgba(0,0,0,.35)]
           transition-transform duration-200 ease-out
           ${open ? "translate-x-0 opacity-100" : "translate-x-5 opacity-0"}`}

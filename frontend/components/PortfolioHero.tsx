@@ -38,12 +38,12 @@ export function PortfolioHero({ portfolio, equity }: Props) {
       : "text-mm-text-dim";
 
   return (
-    <article className="rounded-card border border-mm-border bg-mm-surface p-[22px]">
+    <article className="rounded-card border border-mm-border bg-mm-surface p-4 md:p-[22px]">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-6">
         <div className="flex flex-col gap-5">
           <div>
             <div className="mm-eyebrow">Portfolio Value</div>
-            <div className="font-mono text-[40px] font-medium tabular-nums leading-none tracking-[-1px] mt-1">
+            <div className="font-mono text-[28px] md:text-[40px] font-medium tabular-nums leading-none tracking-[-1px] mt-1">
               {usd(totalUsd)}
             </div>
             <div className="text-[12px] text-mm-text-dim mt-2">

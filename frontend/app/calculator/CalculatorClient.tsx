@@ -63,7 +63,7 @@ export function CalculatorClient({ steps, qqqAth, qqqLast, athDate, drawdownPct 
   const totalPctOfCash = cash > 0 ? (totalBuy / cash) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[18px]">
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 md:gap-[18px]">
       <div className="space-y-[14px]">
         <article className="rounded-card border border-mm-border bg-mm-surface p-[18px] space-y-3">
           <header className="flex items-baseline justify-between">

@@ -22,7 +22,7 @@ export function SymbolDrawdownCard({ data, role }: Props) {
   const dd = data.drawdown_pct ? Number(data.drawdown_pct) : null;
 
   return (
-    <article className="rounded-card border border-mm-border bg-mm-surface p-[18px] space-y-3">
+    <article className="rounded-card border border-mm-border bg-mm-surface p-4 md:p-[18px] space-y-3">
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-[14px]">{data.symbol}</span>

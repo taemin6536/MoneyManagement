@@ -22,7 +22,13 @@ export function RsiChart({ values, width = 280, height = 80 }: Props) {
     .join(" ");
 
   return (
-    <svg width={width} height={height} className="block">
+    <svg
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="block"
+    >
       <defs>
         <linearGradient id="rsiGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--mm-red)" stopOpacity={0.12} />
