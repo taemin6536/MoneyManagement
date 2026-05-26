@@ -21,6 +21,9 @@ def health() -> dict[str, object]:
         "status": "ok" if db_ok else "degraded",
         "db": "ok" if db_ok else f"error: {db_error}",
         "slack_configured": bool(settings.slack_webhook_url),
+        "telegram_configured": bool(
+            settings.telegram_bot_token and settings.telegram_chat_id
+        ),
         "kis_configured": bool(
             settings.kis_app_key
             and settings.kis_app_secret

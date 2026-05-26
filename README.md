@@ -2,7 +2,7 @@
 
 개인 TQQQ / QLD 레버리지 ETF 전략 자동 모니터링·알림 시스템.
 
-QQQ drawdown 기반 분할매수 / ATH 회복 시 QLD 전환 / 과열 신호 비중 축소 — 매뉴얼대로 시장을 감시하다 트리거 도달 시 Slack으로 매수·매도 알람을 보낸다. KIS Open API로 잔고가 자동 동기화되고, yfinance·CNN FGI·환율 데이터로 시세·신호를 폴링한다.
+QQQ drawdown 기반 분할매수 / ATH 회복 시 QLD 전환 / 과열 신호 비중 축소 — 매뉴얼대로 시장을 감시하다 트리거 도달 시 **Slack 또는 Telegram 봇으로 매수·매도 알람**을 보낸다. KIS Open API로 USD/KRW 예수금·보유종목·당일 체결까지 자동 동기화되고, yfinance·CNN FGI·환율 데이터로 시세·신호를 폴링한다.
 
 > 감정은 줄이고, 기준은 명확하게.
 
@@ -17,8 +17,12 @@ QQQ drawdown 기반 분할매수 / ATH 회복 시 QLD 전환 / 과열 신호 비
 - **백테스트** — 2015~현재 QQQ/TQQQ/KRW=X 일봉으로 Pure DCA vs 70/30 매뉴얼 전략 비교 (CAGR / MDD / Equity curve)
 - **분할매수 계산기** — 현재가·현금 입력 시 단계별 매수 USD·예상 TQQQ 주수
 - **자동 잔고 동기화** — KIS API로 USD/KRW 예수금, 보유 종목, 총자산, 당일 매수 수량까지 실시간
-- **일일 리포트** — 평일 KST 06:30 (미국장 마감 후) QQQ drawdown / VIX / FGI / RSI / 환율 요약 Slack 발송
+- **일일 리포트** — 평일 KST 06:30 (미국장 마감 후) QQQ drawdown / VIX / FGI / RSI / 환율 요약 발송
+- **상세 알림 메시지** — 매수 권장 USD·KRW 환산·예상 주수·다음 트리거·액션 체크리스트까지 한 번에
+- **다중 알림 채널** — Slack / Telegram 봇 (둘 다 옵션, 동시 사용 가능)
 - **24시간 dedup** — 같은 단계 알림 중복 차단
+- **한국식 P/L 컬러** — 수익 빨강 / 손실 파랑 (대시보드 일관)
+- **Today P/L 정확 계산** — 당일 매수분(`thdt_buy_ccld_*`)과 전일 보유분 분리, 종가 기준 변동만 반영
 
 ---
 
@@ -30,7 +34,7 @@ QQQ drawdown 기반 분할매수 / ATH 회복 시 QLD 전환 / 과열 신호 비
 | Frontend | Next.js 15 (App Router) · TypeScript · Tailwind · recharts |
 | Database | PostgreSQL 17 |
 | 외부 데이터 | KIS Open API · yfinance · CNN Fear-Greed Index |
-| 알림 | Slack incoming webhook |
+| 알림 | Slack incoming webhook · Telegram Bot API |
 | 배포 | docker compose (로컬) · Railway / Fly.io (예정) |
 
 ---
@@ -55,12 +59,20 @@ KIS_ACCOUNT_NUMBER=12345678        # 계좌번호 앞 8자리
 KIS_ACCOUNT_PRODUCT_CODE=01         # 뒤 2자리
 KIS_PAPER_MODE=false                # 실전 / 모의 (true)
 
-# Slack workspace → Incoming Webhooks
+# 알림 채널 — Slack / Telegram 중 하나 또는 둘 다
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+TELEGRAM_BOT_TOKEN=1234567890:AAEx...
+TELEGRAM_CHAT_ID=123456789
 ```
 
-KIS 신청: <https://apiportal.koreainvestment.com>  
-Slack webhook: <https://api.slack.com/apps>
+#### 외부 서비스 신청
+
+- **KIS Developers**: <https://apiportal.koreainvestment.com> → 앱 등록 → APP_KEY / APP_SECRET 발급
+- **Slack** (선택): <https://api.slack.com/apps> → Incoming Webhooks 활성화
+- **Telegram 봇** (선택):
+  1. Telegram에서 [@BotFather](https://t.me/BotFather)와 대화 → `/newbot` → 토큰 받음
+  2. 생성된 봇 채팅창에서 메시지 한 번 전송
+  3. `https://api.telegram.org/bot<TOKEN>/getUpdates` 에서 `chat.id` 확인
 
 ### 2. 부팅
 
@@ -176,7 +188,7 @@ docker compose exec backend python -m pytest tests/ -v
 ## 보안
 
 - `.env`는 `.gitignore` 처리. **절대 커밋 금지.**
-- KIS APP_SECRET / Slack webhook URL은 비밀번호 동급. 공개·캡쳐·외부 공유 시 즉시 재발급 권장.
+- KIS APP_SECRET / Slack webhook URL / Telegram BOT_TOKEN은 비밀번호 동급. 공개·캡쳐·외부 공유 시 즉시 재발급 권장.
 - 시스템은 **시세 조회·잔고 조회·알림 발송**만 한다. **자동 주문은 하지 않는다.** 모든 매수·매도는 사용자가 한투 앱에서 수동.
 - 단일 사용자 가정. 멀티유저 인증 미구현.
 
@@ -185,10 +197,11 @@ docker compose exec backend python -m pytest tests/ -v
 ## 운용 사이클 (사용자 워크플로)
 
 1. KRW 입금 → 한투 앱에서 USD 환전 → KIS API가 자동으로 USD 예수금 갱신
-2. Slack 매수 알람 (예: "QQQ -15% — Tactical $X의 10% = $Y 매수 권장") 수신
-3. 한투 앱에서 TQQQ $Y 매수 → KIS가 잔고 동기화
-4. QQQ ATH 회복 시 자동 매도 알람 → TQQQ 매도 → QLD 매수
+2. Slack/Telegram 매수 알람 수신 — 메시지에 매수 USD·KRW 환산·예상 TQQQ 주수·다음 트리거·액션 체크리스트까지 포함
+3. 한투 앱에서 권장액만큼 TQQQ 시장가 매수 → KIS가 잔고 자동 동기화
+4. QQQ ATH 회복 시 매도 알람 → TQQQ 전량 매도 → 동일 USD로 QLD 매수
 5. 과열 신호 발동 시 QLD 일부 매도 → USD 예수금으로 복귀
+6. 매일 KST 06:30 일일 리포트로 시장 상태 종합 확인
 
 ---
 

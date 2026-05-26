@@ -33,6 +33,8 @@ services:
       KIS_BASE_URL: ${KIS_BASE_URL:-https://openapi.koreainvestment.com:9443}
       KIS_PAPER_MODE: ${KIS_PAPER_MODE:-true}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
@@ -56,6 +58,16 @@ services:
       - ./frontend/app:/app/app
       - ./frontend/lib:/app/lib
       - ./frontend/components:/app/components
+      # Config files must be mounted so edits on host take effect in dev.
+      # Without these the container keeps the version baked at image build time
+      # (which is e.g. why custom Tailwind tokens like `text-mm-up` wouldn't
+      # generate any CSS rule until we rebuilt the image).
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/next.config.js:/app/next.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/next-env.d.ts:/app/next-env.d.ts
     ports:
       - "3000:3000"
     depends_on:

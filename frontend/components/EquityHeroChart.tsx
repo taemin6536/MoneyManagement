@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import type { EquityCurvePoint } from "@/lib/api";
 import { usd, usdPlain } from "@/lib/format";
@@ -29,6 +29,7 @@ const INNER_W = W - PAD_L - PAD_R;
 const INNER_H = H - PAD_T - PAD_B;
 
 export function EquityHeroChart({ points }: Props) {
+  const reactId = useId();
   const [period, setPeriod] = useState<Period>("3M");
   const [hover, setHover] = useState<{ x: number; y: number; value: number; date: string } | null>(null);
 
@@ -39,8 +40,15 @@ export function EquityHeroChart({ points }: Props) {
 
   if (sliced.length < 2) {
     return (
-      <div className="h-[180px] flex items-center justify-center text-mm-text-mute text-sm">
-        equity 데이터 준비 중…
+      <div className="flex flex-col gap-2">
+        <div className="mm-eyebrow">Equity Curve</div>
+        <div className="h-[180px] flex flex-col items-center justify-center text-center gap-2 px-6">
+          <div className="text-mm-text-dim text-sm">데이터 누적 중</div>
+          <div className="text-mm-text-mute text-xs">
+            매일 KST 09:00에 portfolio snapshot이 저장됩니다.<br />
+            며칠 지나면 자산 추이선이 그려져요.
+          </div>
+        </div>
       </div>
     );
   }
@@ -58,8 +66,8 @@ export function EquityHeroChart({ points }: Props) {
   const change = end - start;
   const changePct = (change / start) * 100;
   const positive = change >= 0;
-  const lineColor = positive ? "var(--mm-green)" : "var(--mm-red)";
-  const gradId = `eqGrad-${positive ? "up" : "dn"}`;
+  const lineColor = positive ? "var(--mm-up)" : "var(--mm-down)";
+  const gradId = `eqGrad${reactId.replace(/:/g, "")}`;
 
   const linePath = values.map((v, i) => `${i === 0 ? "M" : "L"}${ptX(i).toFixed(2)},${ptY(v).toFixed(2)}`).join(" ");
   const areaPath = `M${PAD_L},${PAD_T + INNER_H} L${values
@@ -85,17 +93,19 @@ export function EquityHeroChart({ points }: Props) {
     <div className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="mm-eyebrow">Equity Curve</div>
+          <div className="mm-eyebrow">
+            Equity Curve <span className="normal-case tracking-normal text-mm-text-mute">· {sliced.length}일</span>
+          </div>
           <div className="mt-1 flex items-baseline gap-[10px]">
             <span className="font-mono text-[20px] font-medium tabular-nums">${usdPlain(end)}</span>
-            <span className={`font-mono text-[13px] ${positive ? "text-mm-green" : "text-mm-red"}`}>
+            <span className={`font-mono text-[13px] ${positive ? "text-mm-up" : "text-mm-down"}`}>
               {positive ? "+" : "-"}${usdPlain(Math.abs(change))}
             </span>
             <span
               className={`text-[12px] px-2 py-[2px] rounded-chip ${
                 positive
-                  ? "bg-mm-green/15 text-mm-green"
-                  : "bg-mm-red/15 text-mm-red"
+                  ? "bg-mm-up/15 text-mm-up"
+                  : "bg-mm-down/15 text-mm-down"
               }`}
             >
               {positive ? "▲" : "▼"} {changePct.toFixed(2)}%

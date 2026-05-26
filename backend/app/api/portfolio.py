@@ -125,7 +125,15 @@ def get_equity_curve(db: DbDep, days: int = 365, currency: str = "USD"):
     except kis.KisError:
         summary = None
 
-    anchor_usd = summary.total_eval_usd if summary else None
+    # Anchor must equal the dashboard "Portfolio Value" so the chart's last
+    # point matches the headline number. Definition:
+    #   USD: holdings eval + available USD cash
+    #   KRW: KIS-reported total_assets_krw (includes both currencies + holdings)
+    anchor_usd: Decimal | None = None
+    if summary:
+        anchor_usd = summary.total_eval_usd or Decimal(0)
+        if summary.cash_usd_available:
+            anchor_usd = anchor_usd + summary.cash_usd_available
     anchor_krw = (
         summary.total_assets_krw if summary and summary.total_assets_krw else None
     )

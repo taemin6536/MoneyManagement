@@ -1,22 +1,30 @@
+"use client";
+
+import { useId } from "react";
+
 import { sparkArea, sparkPath } from "@/lib/format";
 
 type Props = {
   values: number[];
   width?: number;
   height?: number;
-  /** "auto" colors by net change sign; or pass an explicit CSS color. */
+  /** "auto" colors by net change sign (red up / blue down, 한국식); or pass an explicit CSS color. */
   color?: "auto" | string;
 };
 
 export function Sparkline({ values, width = 90, height = 28, color = "auto" }: Props) {
+  const reactId = useId();
+
   if (!values || values.length < 2) {
     return <div style={{ width, height }} aria-hidden />;
   }
   const positive = values[values.length - 1] >= values[0];
-  const stroke = color === "auto" ? (positive ? "var(--mm-green)" : "var(--mm-red)") : color;
+  const stroke =
+    color === "auto" ? (positive ? "var(--mm-up)" : "var(--mm-down)") : color;
   const lineD = sparkPath(values, width, height, 2);
   const areaD = sparkArea(values, width, height, 2);
-  const gradId = `spark-${positive ? "up" : "dn"}-${Math.random().toString(36).slice(2, 7)}`;
+  // Stable ID across SSR + client; React's useId is hydration-safe.
+  const gradId = `spark${reactId.replace(/:/g, "")}`;
 
   return (
     <svg width={width} height={height} className="block">

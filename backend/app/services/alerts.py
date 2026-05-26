@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db.models import AlertLog, RuleConfig
-from app.integrations import slack
+from app.integrations import slack, telegram
 from app.rules.base import AlertEvent
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,23 @@ def deliver(
         return "skipped"
 
     settings = get_settings()
-    delivered = slack.send(settings.slack_webhook_url, event.title, event.body)
-    status = "sent" if delivered or not settings.slack_webhook_url else "failed"
+    slack_ok = slack.send(settings.slack_webhook_url, event.title, event.body)
+    tg_ok = telegram.send(
+        settings.telegram_bot_token, settings.telegram_chat_id, event.title, event.body
+    )
+
+    # Sink presence: at least one channel must be configured for the alert to
+    # mean anything. If none configured → mark "sent" so dedup still ticks
+    # (treating logged-only as success). If any configured → require ≥1 OK.
+    any_configured = bool(settings.slack_webhook_url) or bool(
+        settings.telegram_bot_token and settings.telegram_chat_id
+    )
+    if not any_configured:
+        status = "sent"
+    elif slack_ok or tg_ok:
+        status = "sent"
+    else:
+        status = "failed"
 
     db.add(
         AlertLog(

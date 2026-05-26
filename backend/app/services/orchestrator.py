@@ -55,37 +55,71 @@ def evaluate_all_rules(db: Session) -> list[AlertEvent]:
         logger.info("No QQQ price observed yet; skipping rule evaluation.")
         return []
 
+    # Gather extra market context once so every rule can include rich detail
+    # in its Slack message (TQQQ/QLD price, FX, holdings).
+    tqqq_last = market_data.get_latest_price(db, "TQQQ")
+    qld_last = market_data.get_latest_price(db, "QLD")
+    latest_fx = fx.get_latest_rate(db)
+    fx_rate = latest_fx.usd_krw if latest_fx else None
+
+    holdings_by_symbol: dict[str, Decimal] = {}
+    try:
+        balance = kis.fetch_overseas_balance()
+        for h in balance.holdings:
+            holdings_by_symbol[h.symbol.upper()] = h.quantity
+    except kis.KisError as e:
+        logger.info("orchestrator: KIS balance unavailable for context (%s)", e)
+
     tactical = contributions_service.tactical_balance(db)
     cash_usd: Decimal | None = None
-    # Prefer KIS *available* USD (net of unsettled buys) — that's what can
-    # actually be deployed on the next trigger. Total cash includes money
-    # already committed to pending settlements; using it would over-recommend.
     try:
         cash = kis.fetch_cash_balances()
         if cash.usd_withdrawable and cash.usd_withdrawable > 0:
             cash_usd = cash.usd_withdrawable
     except kis.KisError as e:
         logger.info("orchestrator: KIS cash unavailable (%s), falling back to manual tactical", e)
-    # Fall back to manually-tracked tactical reserve when KIS is unavailable.
     if cash_usd is None and tactical.usd and tactical.usd > 0:
         cash_usd = tactical.usd
 
     events: list[AlertEvent] = []
     events.extend(
         rule_buy_drawdown.evaluate(
-            qqq_price=last.close, qqq_ath=ath.ath_price, cash_usd=cash_usd
+            qqq_price=last.close,
+            qqq_ath=ath.ath_price,
+            cash_usd=cash_usd,
+            tqqq_price=tqqq_last.close if tqqq_last else None,
+            fx_rate=fx_rate,
         )
     )
     events.extend(
-        rule_sell_recovery.evaluate(qqq_price=last.close, qqq_ath=ath.ath_price)
+        rule_sell_recovery.evaluate(
+            qqq_price=last.close,
+            qqq_ath=ath.ath_price,
+            holdings_tqqq_shares=holdings_by_symbol.get("TQQQ"),
+            tqqq_price=tqqq_last.close if tqqq_last else None,
+            qld_price=qld_last.close if qld_last else None,
+            fx_rate=fx_rate,
+        )
     )
     overheated_signals = _build_overheated_signals(last.close)
     if overheated_signals is not None:
-        events.extend(rule_overheated.evaluate(overheated_signals, last.close))
+        events.extend(
+            rule_overheated.evaluate(
+                signals=overheated_signals,
+                qqq_price=last.close,
+                holdings_qld_shares=holdings_by_symbol.get("QLD"),
+                qld_price=qld_last.close if qld_last else None,
+                fx_rate=fx_rate,
+            )
+        )
 
-    latest_fx = fx.get_latest_rate(db)
     if latest_fx is not None:
-        events.extend(rule_fx.evaluate(latest_fx.usd_krw))
+        events.extend(
+            rule_fx.evaluate(
+                latest_fx.usd_krw,
+                pending_tactical_krw=tactical.krw if tactical.krw > 0 else None,
+            )
+        )
         sma = signals.compute_fx_sma()
         if sma is not None and sma.sma_30 is not None and sma.deviation_pct is not None:
             events.extend(

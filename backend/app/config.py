@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     kis_paper_mode: bool = True
 
     slack_webhook_url: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
 
 
 @lru_cache

@@ -5,6 +5,19 @@ const config: Config = {
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
   ],
+  // P/L semantic colors must always exist in the CSS bundle even if a render
+  // happens with all-positive or all-negative values — otherwise the next
+  // render with mixed signs paints an unstyled class.
+  safelist: [
+    "text-mm-up",
+    "text-mm-down",
+    "bg-mm-up/15",
+    "bg-mm-down/15",
+    "bg-mm-up/10",
+    "bg-mm-down/10",
+    "border-mm-up/40",
+    "border-mm-down/40",
+  ],
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {

@@ -351,7 +351,7 @@ export type BacktestResult = {
   curve: EquityPoint[];
 };
 
-export type EquityCurvePoint = { date: string; value: number; source: "snapshot" | "proxy" };
+export type EquityCurvePoint = { date: string; value: number; source: "snapshot" | "live" };
 export type EquityCurve = { currency: "USD" | "KRW"; days: number; points: EquityCurvePoint[] };
 
 export async function fetchEquityCurve(days = 365, currency: "USD" | "KRW" = "USD") {

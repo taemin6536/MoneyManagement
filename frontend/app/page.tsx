@@ -36,37 +36,34 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 export default async function DashboardPage() {
-  const [
-    portfolio,
-    equity,
-    tactical,
-    signals,
-    rsi,
-    qqq,
-    tqqq,
-    qld,
-    sparkQqq,
-    sparkTqqq,
-    sparkQld,
-  ] = await Promise.all([
-    safe<Portfolio>(fetchPortfolio),
-    safe<EquityCurve>(() => fetchEquityCurve(365, "USD")),
-    safe<TacticalBalance>(fetchTacticalBalance),
-    safe<OverheatedSignals>(fetchOverheatedSignals),
-    safe<RsiHistory>(() => fetchRsiHistory(30, "QQQ")),
-    safe<SymbolSummary>(() => fetchSymbolSummary("QQQ")),
-    safe<SymbolSummary>(() => fetchSymbolSummary("TQQQ")),
-    safe<SymbolSummary>(() => fetchSymbolSummary("QLD")),
-    safe<Sparkline>(() => fetchSparkline("QQQ", 30)),
-    safe<Sparkline>(() => fetchSparkline("TQQQ", 30)),
-    safe<Sparkline>(() => fetchSparkline("QLD", 30)),
-  ]);
+  // Round 1 — portfolio first so we know which symbols to spark-line.
+  const portfolio = await safe<Portfolio>(fetchPortfolio);
 
-  const sparklines: Record<string, number[]> = {
-    QQQ: sparkQqq?.closes ?? [],
-    TQQQ: sparkTqqq?.closes ?? [],
-    QLD: sparkQld?.closes ?? [],
-  };
+  // Strategy-reference symbols are always shown; holdings (any ad-hoc symbols
+  // the user bought) get spark-lines added dynamically.
+  const symbolsToSpark = Array.from(
+    new Set<string>([
+      ...SYMBOLS,
+      ...(portfolio?.holdings.map((h) => h.symbol.toUpperCase()) ?? []),
+    ]),
+  );
+
+  // Round 2 — everything else in parallel.
+  const [equity, tactical, signals, rsi, qqq, tqqq, qld, ...sparkResults] =
+    await Promise.all([
+      safe<EquityCurve>(() => fetchEquityCurve(365, "USD")),
+      safe<TacticalBalance>(fetchTacticalBalance),
+      safe<OverheatedSignals>(fetchOverheatedSignals),
+      safe<RsiHistory>(() => fetchRsiHistory(30, "QQQ")),
+      safe<SymbolSummary>(() => fetchSymbolSummary("QQQ")),
+      safe<SymbolSummary>(() => fetchSymbolSummary("TQQQ")),
+      safe<SymbolSummary>(() => fetchSymbolSummary("QLD")),
+      ...symbolsToSpark.map((s) => safe<Sparkline>(() => fetchSparkline(s, 30))),
+    ]);
+
+  const sparklines: Record<string, number[]> = Object.fromEntries(
+    symbolsToSpark.map((s, i) => [s, sparkResults[i]?.closes ?? []]),
+  );
 
   const symbolData: Record<string, SymbolSummary | null> = {
     QQQ: qqq,
