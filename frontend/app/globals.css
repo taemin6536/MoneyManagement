@@ -1,0 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ----- Design tokens (dark = default) -------------------------------- */
+
+:root,
+[data-theme="dark"] {
+  --mm-bg: #0b1220;
+  --mm-bg-sub: #0e1626;
+  --mm-surface: #131c2e;
+  --mm-surface-2: #1a2336;
+  --mm-border: #243149;
+  --mm-border-soft: #1c2a40;
+  --mm-text: #e5edf7;
+  --mm-text-dim: #8294b3;
+  --mm-text-mute: #56688a;
+  --mm-green: #3ddc97;
+  --mm-red: #ff5470;
+  --mm-amber: #ffc56b;
+  --mm-violet: #a78bfa;
+  --mm-accent: #5b9dff;
+  --mm-accent-dim: #1d4677;
+  /* P/L semantic (한국식: 상승=red, 하락=blue) */
+  --mm-up: #ff5470;
+  --mm-down: #4d9bff;
+}
+
+[data-theme="light"] {
+  --mm-bg: #f4f5f9;
+  --mm-bg-sub: #eceef4;
+  --mm-surface: #ffffff;
+  --mm-surface-2: #f7f8fb;
+  --mm-border: #dde2ec;
+  --mm-border-soft: #eaedf3;
+  --mm-text: #0c1426;
+  --mm-text-dim: #5a6883;
+  --mm-text-mute: #92a0b8;
+  --mm-green: #0f9d6b;
+  --mm-red: #dc3055;
+  --mm-amber: #c98212;
+  --mm-violet: #6e4ce4;
+  --mm-accent: #3b82f6;
+  --mm-accent-dim: #c3d4f3;
+  --mm-up: #dc3055;
+  --mm-down: #2563eb;
+}
+
+/* Accent overrides (apply on either theme) */
+[data-accent="teal"] { --mm-accent: #00e5c7; }
+[data-accent="blue"] { --mm-accent: #5b9dff; }
+[data-accent="violet"] { --mm-accent: #a78bfa; }
+[data-accent="orange"] { --mm-accent: #ff8c42; }
+
+[data-theme="light"][data-accent="teal"] { --mm-accent: #00b8a3; }
+[data-theme="light"][data-accent="blue"] { --mm-accent: #3b82f6; }
+[data-theme="light"][data-accent="violet"] { --mm-accent: #7c5cff; }
+[data-theme="light"][data-accent="orange"] { --mm-accent: #ff7a3d; }
+
+/* ----- Base layer ----------------------------------------------------- */
+
+@layer base {
+  html,
+  body {
+    background: var(--mm-bg);
+    color: var(--mm-text);
+  }
+
+  body {
+    font-family: "Outfit", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: "tnum" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* All numeric content gets tabular figures so columns line up. */
+  .num,
+  .font-mono {
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .mm-eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--mm-text-dim);
+    font-weight: 500;
+  }
+}
