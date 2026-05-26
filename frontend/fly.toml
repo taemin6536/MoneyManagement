@@ -12,11 +12,18 @@ primary_region = "nrt"
 
 [build]
   dockerfile = "Dockerfile.prod"
+  [build.args]
+    NEXT_PUBLIC_API_BASE_URL = "https://moneymangement-api.fly.dev"
 
 [env]
   NODE_ENV = "production"
   TZ = "Asia/Seoul"
   PORT = "3000"
+  # Next.js standalone defaults to listening on 127.0.0.1; bind 0.0.0.0 for Fly proxy.
+  HOSTNAME = "0.0.0.0"
+  # SSR uses INTERNAL_API_BASE_URL (server-side fetch); same host since they're both public.
+  INTERNAL_API_BASE_URL = "https://moneymangement-api.fly.dev"
+  NEXT_PUBLIC_API_BASE_URL = "https://moneymangement-api.fly.dev"
 
 [http_service]
   internal_port = 3000
