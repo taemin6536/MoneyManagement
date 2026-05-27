@@ -1,5 +1,6 @@
 import { AllocationDonut } from "@/components/AllocationDonut";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { BriefingCard } from "@/components/BriefingCard";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { OverheatedSignalsCard } from "@/components/OverheatedSignalsCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -80,6 +81,8 @@ export default async function DashboardPage() {
         subtitle="QQQ drawdown 기반 매수 단계 추적 · TQQQ/QLD 보유 · 30초 auto-refresh"
         timestamp={portfolio?.fetched_at}
       />
+
+      <BriefingCard />
 
       {portfolio && portfolio.configured && equity ? (
         <PortfolioHero portfolio={portfolio} equity={equity.points} />

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
+    # AI briefing (Anthropic). Key is password-equivalent — Fly secret / local .env only.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5"
+
     # Comma-separated list of allowed CORS origins; default covers local dev.
     cors_origins: str = "http://localhost:3000"
 

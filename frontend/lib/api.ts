@@ -358,6 +358,17 @@ export async function fetchEquityCurve(days = 365, currency: "USD" | "KRW" = "US
   return get<EquityCurve>(`/api/portfolio/equity?days=${days}&currency=${currency}`);
 }
 
+export type Briefing = {
+  available: boolean;
+  briefing: string | null;
+  model: string;
+  generated_at: string;
+};
+
+export async function fetchBriefing() {
+  return get<Briefing>("/api/briefing");
+}
+
 export type Sparkline = { symbol: string; days: number; closes: number[] };
 
 export async function fetchSparkline(symbol: string, days = 30) {

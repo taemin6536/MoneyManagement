@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.backtest import router as backtest_router
+from app.api.briefing import router as briefing_router
 from app.api.contributions import router as contributions_router
 from app.api.health import router as health_router
 from app.api.market import router as market_router
@@ -50,6 +51,7 @@ app.include_router(market_router)
 app.include_router(portfolio_router)
 app.include_router(contributions_router)
 app.include_router(backtest_router)
+app.include_router(briefing_router)
 
 
 @app.get("/")

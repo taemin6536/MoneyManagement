@@ -17,6 +17,7 @@ dependencies = [
     "pandas>=2.2.3",
     "pandas-ta>=0.3.14b0",
     "python-multipart>=0.0.20",
+    "anthropic>=0.40.0",
 ]
 
 [project.optional-dependencies]
