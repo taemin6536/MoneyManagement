@@ -405,6 +405,88 @@ export async function fetchNewsSummary() {
   return get<NewsSummary>("/api/news/summary");
 }
 
+export type TradeSnapshot = {
+  qqq_price?: number;
+  qqq_ath?: number;
+  drawdown_pct?: number;
+  tqqq_price?: number;
+  qld_price?: number;
+  vix?: number;
+  usd_krw?: number;
+};
+
+export type Trade = {
+  id: number;
+  executed_at: string;
+  symbol: string;
+  side: "buy" | "sell";
+  quantity: string;
+  price_usd: string;
+  total_usd: string;
+  snapshot: TradeSnapshot | null;
+  rule_level: string | null;
+  note: string | null;
+  source: "kis_sync" | "manual";
+  kis_order_id: string | null;
+  created_at: string;
+};
+
+export type TradeList = {
+  items: Trade[];
+  symbols: string[];
+};
+
+export async function fetchTrades(opts?: {
+  limit?: number;
+  symbol?: string;
+  side?: "buy" | "sell";
+  days?: number;
+}) {
+  const qs = new URLSearchParams();
+  if (opts?.limit) qs.set("limit", String(opts.limit));
+  if (opts?.symbol) qs.set("symbol", opts.symbol);
+  if (opts?.side) qs.set("side", opts.side);
+  if (opts?.days) qs.set("days", String(opts.days));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<TradeList>(`/api/trades${suffix}`);
+}
+
+export async function patchTrade(
+  id: number,
+  payload: { note?: string | null; rule_level?: string | null },
+) {
+  const BASE_URL =
+    process.env.INTERNAL_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "http://localhost:8000";
+  const res = await fetch(`${BASE_URL}/api/trades/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`PATCH /api/trades/${id} ${res.status}`);
+  return res.json() as Promise<Trade>;
+}
+
+export async function syncTradesFromKis(daysBack: number = 365) {
+  const BASE_URL =
+    process.env.INTERNAL_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "http://localhost:8000";
+  const res = await fetch(
+    `${BASE_URL}/api/dev/trades-sync?days_back=${daysBack}`,
+    { method: "POST" },
+  );
+  if (!res.ok) throw new Error(`trades-sync ${res.status}`);
+  return res.json() as Promise<{
+    fetched: number;
+    inserted: number;
+    days_back: number;
+    start: string;
+    end: string;
+  }>;
+}
+
 export type Sparkline = { symbol: string; days: number; closes: number[] };
 
 export async function fetchSparkline(symbol: string, days = 30) {

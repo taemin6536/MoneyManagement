@@ -17,7 +17,7 @@ KIS-specific concerns isolated from the rest of the app.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from threading import Lock
 import logging
@@ -356,3 +356,129 @@ def reset_token_cache() -> None:
     global _TOKEN_CACHE
     with _TOKEN_LOCK:
         _TOKEN_CACHE = None
+
+
+# ---------------------------------------------------------------------------
+# Trade history (해외주식 기간별주문체결내역)
+# ---------------------------------------------------------------------------
+
+_KST = timezone(timedelta(hours=9))
+
+
+def trade_history_tr_id(paper: bool) -> str:
+    return "VTTS3035R" if paper else "TTTS3035R"
+
+
+@dataclass(slots=True)
+class KisTrade:
+    """One executed overseas-stock trade returned by inquire-ccnl."""
+
+    order_id: str            # "{ord_dt}-{odno}" — stable dedup key
+    executed_at: datetime    # tz-aware UTC; from ord_dt + ord_tmd (KST → UTC)
+    symbol: str
+    side: str                # 'buy' | 'sell'
+    quantity: Decimal
+    price_usd: Decimal
+    total_usd: Decimal
+    raw: dict = field(default_factory=dict)
+
+
+def fetch_trade_history(
+    start_date: date,
+    end_date: date,
+    exchange: str = EXCHANGE_NASDAQ,
+) -> list[KisTrade]:
+    """Pull executed overseas-stock trades over [start_date, end_date].
+
+    Endpoint: GET /uapi/overseas-stock/v1/trading/inquire-ccnl
+    TR_ID:    TTTS3035R (real) / VTTS3035R (paper)
+
+    - Filters CCLD_NCCS_DVSN=01 (체결 완료만)
+    - Skips 정정·취소 rows (rvse_cncl_dvsn != '00')
+    - Follows CTX_AREA_FK200/NK200 pagination (safety cap 20 pages)
+    """
+    _, _, account_number, product_code, paper = _require_creds()
+    url = f"{base_url(paper)}/uapi/overseas-stock/v1/trading/inquire-ccnl"
+    tr_id = trade_history_tr_id(paper)
+
+    params = {
+        "CANO": account_number,
+        "ACNT_PRDT_CD": product_code,
+        "PDNO": "%",                 # all symbols
+        "ORD_STRT_DT": start_date.strftime("%Y%m%d"),
+        "ORD_END_DT": end_date.strftime("%Y%m%d"),
+        "SLL_BUY_DVSN": "00",        # all (buy + sell)
+        "CCLD_NCCS_DVSN": "01",      # filled only
+        "OVRS_EXCG_CD": exchange,
+        "SORT_SQN": "DS",            # newest first
+        "ORD_DT": "",
+        "ORD_GNO_BRNO": "",
+        "ODNO": "",
+        "CTX_AREA_NK200": "",
+        "CTX_AREA_FK200": "",
+    }
+
+    trades: list[KisTrade] = []
+
+    for _ in range(20):  # safety cap on pagination
+        headers = _auth_headers(tr_id)
+        if params["CTX_AREA_FK200"]:
+            headers["tr_cont"] = "N"  # 'next' continuation
+
+        resp = httpx.get(url, headers=headers, params=params, timeout=15.0)
+        if resp.status_code != 200:
+            raise KisError(
+                f"trade history request failed: {resp.status_code} {resp.text[:200]}"
+            )
+        data = resp.json()
+        if data.get("rt_cd") != "0":
+            raise KisError(
+                f"trade history API error: rt_cd={data.get('rt_cd')} msg={data.get('msg1')!r}"
+            )
+
+        for row in data.get("output") or []:
+            ccld_qty = _to_decimal(row.get("ft_ccld_qty"))
+            if ccld_qty <= 0:
+                continue
+            rcv = (row.get("rvse_cncl_dvsn") or "00").strip()
+            if rcv not in ("", "00"):
+                continue  # skip 정정/취소
+
+            ord_dt = (row.get("ord_dt") or "").strip()
+            ord_tmd = (row.get("ord_tmd") or "000000").strip().zfill(6)
+            try:
+                naive = datetime.strptime(f"{ord_dt}{ord_tmd}", "%Y%m%d%H%M%S")
+                executed_at = naive.replace(tzinfo=_KST).astimezone(timezone.utc)
+            except (ValueError, TypeError):
+                logger.warning("kis trade: bad date/time row=%s", row)
+                continue
+
+            side_code = (row.get("sll_buy_dvsn_cd") or "").strip()
+            side = "buy" if side_code == "02" else "sell"
+
+            odno = (row.get("odno") or "").strip()
+            order_id = (
+                f"{ord_dt}-{odno}" if odno
+                else f"{ord_dt}-{row.get('pdno', '?')}-{ord_tmd}"
+            )
+
+            trades.append(
+                KisTrade(
+                    order_id=order_id,
+                    executed_at=executed_at,
+                    symbol=str(row.get("pdno", "")).strip().upper(),
+                    side=side,
+                    quantity=ccld_qty,
+                    price_usd=_to_decimal(row.get("ft_ccld_unpr3")),
+                    total_usd=_to_decimal(row.get("ft_ccld_amt3")),
+                    raw=row,
+                )
+            )
+
+        tr_cont = (resp.headers.get("tr_cont") or "").strip()
+        if tr_cont not in ("F", "M"):
+            break  # no more pages
+        params["CTX_AREA_FK200"] = data.get("ctx_area_fk200", "")
+        params["CTX_AREA_NK200"] = data.get("ctx_area_nk200", "")
+
+    return trades

@@ -205,3 +205,37 @@ class NewsItem(Base):
     category: Mapped[str | None] = mapped_column(String(32))
 
     __table_args__ = (Index("ix_news_published_at_desc", "published_at"),)
+
+
+class Trade(Base):
+    """A single executed trade — the journal entry.
+
+    Sources: KIS auto-sync (`source='kis_sync'`, `kis_order_id` populated for
+    dedup) or manual entry (`source='manual'`, `kis_order_id=None`). The
+    market `snapshot` captures the state at executed_at so we can review
+    later whether the trade matched the rules.
+    """
+
+    __tablename__ = "trades"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    executed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(16), nullable=False)
+    side: Mapped[str] = mapped_column(String(8), nullable=False)  # 'buy' | 'sell'
+    quantity: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    price_usd: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    total_usd: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    snapshot: Mapped[dict | None] = mapped_column(JSON)
+    rule_level: Mapped[str | None] = mapped_column(String(64))
+    note: Mapped[str | None] = mapped_column(String(1000))
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    kis_order_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("kis_order_id", name="uq_trades_kis_order_id"),
+        Index("ix_trades_executed_at_desc", "executed_at"),
+        Index("ix_trades_symbol", "symbol"),
+    )

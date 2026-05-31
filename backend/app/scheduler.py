@@ -20,6 +20,7 @@ from app.services.news import poll_all_feeds as poll_news_feeds
 from app.services.news import purge_old as purge_old_news
 from app.services.orchestrator import poll_and_evaluate
 from app.services.portfolio import run_daily_snapshot_job
+from app.services.trades import sync_from_kis as sync_trades_from_kis
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,17 @@ def start() -> BackgroundScheduler:
         coalesce=True,
         replace_existing=True,
     )
+    # Trade journal: KST 08:00 = UTC 23:00. Late enough that overnight US
+    # executions are settled in KIS. Day 0 only pulls the prior 7 days
+    # to stay cheap; the initial 1-year backfill is a one-off manual trigger.
+    scheduler.add_job(
+        _safe_trades_sync,
+        CronTrigger(hour=23, minute=0, timezone="UTC"),
+        id="trades_sync",
+        max_instances=1,
+        coalesce=True,
+        replace_existing=True,
+    )
     scheduler.start()
     _scheduler = scheduler
     logger.info("Scheduler started.")
@@ -131,3 +143,13 @@ def _safe_news_purge() -> None:
         logger.info("news_purge: removed=%d", n)
     except Exception:
         logger.exception("news_purge failed")
+
+
+def _safe_trades_sync() -> None:
+    # Daily delta pull (7 days) — keeps the journal current without
+    # re-scanning the full backfill window every night.
+    try:
+        result = sync_trades_from_kis(days_back=7)
+        logger.info("trades_sync: %s", result)
+    except Exception:
+        logger.exception("trades_sync failed")
