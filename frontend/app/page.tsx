@@ -3,6 +3,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { BriefingCard } from "@/components/BriefingCard";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { NewsCard } from "@/components/NewsCard";
+import { NextEventCard } from "@/components/NextEventCard";
 import { TradesCard } from "@/components/TradesCard";
 import { OverheatedSignalsCard } from "@/components/OverheatedSignalsCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,6 +12,7 @@ import { RsiChart } from "@/components/RsiChart";
 import { SymbolDrawdownCard } from "@/components/SymbolDrawdownCard";
 import { TacticalCard } from "@/components/TacticalCard";
 import {
+  fetchCalendar,
   fetchEquityCurve,
   fetchNews,
   fetchOverheatedSignals,
@@ -20,6 +22,7 @@ import {
   fetchSymbolSummary,
   fetchTacticalBalance,
   fetchTrades,
+  type EconomicEventList,
   type EquityCurve,
   type NewsList,
   type OverheatedSignals,
@@ -57,19 +60,31 @@ export default async function DashboardPage() {
   );
 
   // Round 2 — everything else in parallel.
-  const [equity, tactical, signals, rsi, qqq, tqqq, qld, news, trades, ...sparkResults] =
-    await Promise.all([
-      safe<EquityCurve>(() => fetchEquityCurve(365, "USD")),
-      safe<TacticalBalance>(fetchTacticalBalance),
-      safe<OverheatedSignals>(fetchOverheatedSignals),
-      safe<RsiHistory>(() => fetchRsiHistory(30, "QQQ")),
-      safe<SymbolSummary>(() => fetchSymbolSummary("QQQ")),
-      safe<SymbolSummary>(() => fetchSymbolSummary("TQQQ")),
-      safe<SymbolSummary>(() => fetchSymbolSummary("QLD")),
-      safe<NewsList>(() => fetchNews({ limit: 3 })),
-      safe<TradeList>(() => fetchTrades({ limit: 3, days: 90 })),
-      ...symbolsToSpark.map((s) => safe<Sparkline>(() => fetchSparkline(s, 30))),
-    ]);
+  const [
+    equity,
+    tactical,
+    signals,
+    rsi,
+    qqq,
+    tqqq,
+    qld,
+    news,
+    trades,
+    calendar,
+    ...sparkResults
+  ] = await Promise.all([
+    safe<EquityCurve>(() => fetchEquityCurve(365, "USD")),
+    safe<TacticalBalance>(fetchTacticalBalance),
+    safe<OverheatedSignals>(fetchOverheatedSignals),
+    safe<RsiHistory>(() => fetchRsiHistory(30, "QQQ")),
+    safe<SymbolSummary>(() => fetchSymbolSummary("QQQ")),
+    safe<SymbolSummary>(() => fetchSymbolSummary("TQQQ")),
+    safe<SymbolSummary>(() => fetchSymbolSummary("QLD")),
+    safe<NewsList>(() => fetchNews({ limit: 3 })),
+    safe<TradeList>(() => fetchTrades({ limit: 3, days: 90 })),
+    safe<EconomicEventList>(() => fetchCalendar({ days: 60, importance: "high" })),
+    ...symbolsToSpark.map((s) => safe<Sparkline>(() => fetchSparkline(s, 30))),
+  ]);
 
   const sparklines: Record<string, number[]> = Object.fromEntries(
     symbolsToSpark.map((s, i) => [s, sparkResults[i]?.closes ?? []]),
@@ -91,6 +106,8 @@ export default async function DashboardPage() {
       />
 
       <BriefingCard />
+
+      <NextEventCard data={calendar} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[18px]">
         <NewsCard data={news} />

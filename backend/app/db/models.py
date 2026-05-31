@@ -239,3 +239,35 @@ class Trade(Base):
         Index("ix_trades_executed_at_desc", "executed_at"),
         Index("ix_trades_symbol", "symbol"),
     )
+
+
+class EconomicEvent(Base):
+    """One macro event (FOMC / CPI / NFP / PCE / BOK rate decision / ...).
+
+    Sourced from a hand-maintained seed + manual UI edits. No external API
+    sync in v1 — Fed/BLS publish calendars in advance and the user can fix
+    dates via the UI if reality drifts from the seed.
+    """
+
+    __tablename__ = "economic_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    country: Mapped[str] = mapped_column(String(8), nullable=False)   # 'US' | 'KR' | ...
+    category: Mapped[str] = mapped_column(String(32), nullable=False) # 'FOMC' | 'CPI' | ...
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000))
+    importance: Mapped[str] = mapped_column(String(8), nullable=False, default="med")  # high/med/low
+    source_url: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "country", "category", "event_at",
+            name="uq_economic_events_country_category_event_at",
+        ),
+        Index("ix_economic_events_event_at", "event_at"),
+        Index("ix_economic_events_importance_event_at", "importance", "event_at"),
+    )

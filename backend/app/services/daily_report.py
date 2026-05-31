@@ -4,7 +4,7 @@ Bundles QQQ price/drawdown, TQQQ/QLD closes, VIX, FGI, RSI, USD/KRW into a
 single status digest. Runs once per weekday after the US session.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import logging
 
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations import anthropic_client, fgi, kis, slack, telegram
+from app.services import calendar as calendar_service
 from app.services import contributions as contributions_service
 from app.services import fx, market_data, news as news_service, signals
 
@@ -88,6 +89,19 @@ def gather_context(db: Session) -> dict:
     except kis.KisError as e:
         logger.info("daily_report: KIS context unavailable (%s)", e)
 
+    # Upcoming macro events (next 7 days) — surfaces FOMC/CPI/NFP/PCE/BOK ahead.
+    upcoming_event_rows = calendar_service.list_in_window(db, hours_from=0, hours_to=168)
+    upcoming_events = [
+        {
+            "event_at": ev.event_at.isoformat(),
+            "country": ev.country,
+            "category": ev.category,
+            "name": ev.name,
+            "importance": ev.importance,
+        }
+        for ev in upcoming_event_rows
+    ]
+
     # Recent macro news (last 24h, top 8) — used for both raw report and LLM summary.
     news_rows = news_service.top_for_summary(db, hours=24)
     recent_news = [
@@ -102,6 +116,7 @@ def gather_context(db: Session) -> dict:
     ]
 
     return {
+        "upcoming_events": upcoming_events,
         "recent_news": recent_news,
         "date": datetime.now(timezone.utc).date().isoformat(),
         "qqq_price": qqq.close if qqq else None,
@@ -207,6 +222,27 @@ def build_report(db: Session) -> tuple[str, str]:
     if narrative:
         lines.append("*🤖 오늘의 브리핑*")
         lines.append(narrative)
+        lines.append("")
+
+    # Upcoming macro events section (between briefing and news).
+    events = ctx.get("upcoming_events") or []
+    if events:
+        lines.append("*📅 다가오는 매크로 이벤트 (7일)*")
+        kst = timezone(timedelta(hours=9))
+        now_utc = datetime.now(timezone.utc)
+        for ev in events:
+            try:
+                dt = datetime.fromisoformat(ev["event_at"])
+            except (TypeError, ValueError):
+                continue
+            dt_kst = dt.astimezone(kst)
+            hours_until = (dt - now_utc).total_seconds() / 3600
+            if hours_until < 24:
+                when = f"오늘/내일 {dt_kst.strftime('%H:%M')} KST"
+            else:
+                when = f"{dt_kst.strftime('%m/%d (%a) %H:%M')} KST · D-{int(hours_until // 24)}"
+            tag = f"[{ev['country']}]"
+            lines.append(f"• {tag} {ev['name']} — {when}")
         lines.append("")
 
     # Macro news section (between briefing and raw numbers).

@@ -469,6 +469,60 @@ export async function syncTradesFromKis(daysBack: number = 365) {
   }>(`/api/dev/trades-sync?days_back=${daysBack}`);
 }
 
+export type EconomicEvent = {
+  id: number;
+  event_at: string;
+  country: string;
+  category: string;
+  name: string;
+  description: string | null;
+  importance: "high" | "med" | "low";
+  source_url: string | null;
+  created_at: string;
+};
+
+export type EconomicEventList = {
+  items: EconomicEvent[];
+};
+
+export async function fetchCalendar(opts?: {
+  days?: number;
+  country?: string;
+  importance?: string;
+}) {
+  const qs = new URLSearchParams();
+  if (opts?.days) qs.set("days", String(opts.days));
+  if (opts?.country) qs.set("country", opts.country);
+  if (opts?.importance) qs.set("importance", opts.importance);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<EconomicEventList>(`/api/calendar${suffix}`);
+}
+
+export type EventCreatePayload = {
+  event_at: string; // ISO
+  country: string;
+  category: string;
+  name: string;
+  description?: string | null;
+  importance?: "high" | "med" | "low";
+  source_url?: string | null;
+};
+
+export async function createEvent(payload: EventCreatePayload) {
+  return postJson<EconomicEvent>("/api/calendar", payload);
+}
+
+export async function patchEvent(
+  id: number,
+  payload: Partial<EventCreatePayload>,
+) {
+  return patchJson<EconomicEvent>(`/api/calendar/${id}`, payload);
+}
+
+export async function deleteEvent(id: number) {
+  return del<unknown>(`/api/calendar/${id}`);
+}
+
 export type Sparkline = { symbol: string; days: number; closes: number[] };
 
 export async function fetchSparkline(symbol: string, days = 30) {

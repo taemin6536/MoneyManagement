@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.backtest import router as backtest_router
 from app.api.briefing import router as briefing_router
+from app.api.calendar import router as calendar_router
 from app.api.contributions import router as contributions_router
 from app.api.health import router as health_router
 from app.api.market import router as market_router
@@ -78,6 +79,7 @@ app.include_router(backtest_router)
 app.include_router(briefing_router)
 app.include_router(news_router)
 app.include_router(trades_router)
+app.include_router(calendar_router)
 
 
 @app.get("/")
