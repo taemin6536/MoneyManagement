@@ -4,10 +4,11 @@ import { useMemo, useState } from "react";
 
 import {
   createEvent,
-  deleteEvent,
   type EconomicEvent,
   type EconomicEventList,
 } from "@/lib/api";
+
+import { EventDetailDrawer } from "./EventDetailDrawer";
 
 function fmtKst(iso: string, opts?: Intl.DateTimeFormatOptions): string {
   return new Date(iso).toLocaleString("ko-KR", {
@@ -48,6 +49,7 @@ export function CalendarTimeline({ initial }: { initial: EconomicEventList }) {
   const [items, setItems] = useState<EconomicEvent[]>(initial.items);
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState<"all" | "high" | "med" | "low">("all");
+  const [selected, setSelected] = useState<EconomicEvent | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -79,14 +81,9 @@ export function CalendarTimeline({ initial }: { initial: EconomicEventList }) {
     setShowAdd(false);
   }
 
-  async function onDelete(id: number) {
-    if (!confirm("정말 삭제할까요?")) return;
-    try {
-      await deleteEvent(id);
-      setItems((prev) => prev.filter((e) => e.id !== id));
-    } catch {
-      alert("삭제 실패");
-    }
+  function onDeleted(id: number) {
+    setItems((prev) => prev.filter((e) => e.id !== id));
+    setSelected(null);
   }
 
   return (
@@ -139,41 +136,36 @@ export function CalendarTimeline({ initial }: { initial: EconomicEventList }) {
                   return (
                     <li
                       key={ev.id}
-                      className="rounded-card border border-mm-border bg-mm-surface p-4 flex items-start justify-between gap-3"
+                      onClick={() => setSelected(ev)}
+                      className="rounded-card border border-mm-border bg-mm-surface p-4 cursor-pointer hover:border-mm-border-soft hover:bg-white/[0.02] transition-colors"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`rounded-pill px-2 py-0.5 text-[10px] font-semibold uppercase ${b.bg} ${b.text}`}
-                          >
-                            {ev.importance}
-                          </span>
-                          <span className="font-mono text-[11px] text-mm-text-mute">
-                            [{ev.country}] {ev.category}
-                          </span>
-                          <span className="font-mono text-[11px] text-mm-text-mute">
-                            {dDay(ev.event_at)}
-                          </span>
-                        </div>
-                        <div className="font-semibold text-[14px] mt-1">
-                          {ev.name}
-                        </div>
-                        {ev.description && (
-                          <div className="text-[12px] text-mm-text-dim mt-1">
-                            {ev.description}
-                          </div>
-                        )}
-                        <div className="text-[11px] text-mm-text-mute font-mono mt-1">
-                          {fmtKst(ev.event_at)} KST
-                        </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`rounded-pill px-2 py-0.5 text-[10px] font-semibold uppercase ${b.bg} ${b.text}`}
+                        >
+                          {ev.importance}
+                        </span>
+                        <span className="font-mono text-[11px] text-mm-text-mute">
+                          [{ev.country}] {ev.category}
+                        </span>
+                        <span className="font-mono text-[11px] text-mm-text-mute">
+                          {dDay(ev.event_at)}
+                        </span>
+                        <span className="ml-auto text-[11px] text-mm-text-mute">
+                          상세 →
+                        </span>
                       </div>
-                      <button
-                        onClick={() => onDelete(ev.id)}
-                        className="shrink-0 text-[11px] text-mm-text-mute hover:text-mm-amber"
-                        aria-label="delete"
-                      >
-                        삭제
-                      </button>
+                      <div className="font-semibold text-[14px] mt-1">
+                        {ev.name}
+                      </div>
+                      {ev.description && (
+                        <div className="text-[12px] text-mm-text-dim mt-1">
+                          {ev.description}
+                        </div>
+                      )}
+                      <div className="text-[11px] text-mm-text-mute font-mono mt-1">
+                        {fmtKst(ev.event_at)} KST
+                      </div>
                     </li>
                   );
                 })}
@@ -182,6 +174,12 @@ export function CalendarTimeline({ initial }: { initial: EconomicEventList }) {
           ))}
         </div>
       )}
+
+      <EventDetailDrawer
+        event={selected}
+        onClose={() => setSelected(null)}
+        onDeleted={onDeleted}
+      />
     </div>
   );
 }
