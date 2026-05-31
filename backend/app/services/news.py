@@ -89,8 +89,17 @@ def available_sources(db: Session) -> list[str]:
     return [r for r in rows if r]
 
 
-def top_for_summary(db: Session, hours: int = 24, limit: int = 8) -> list[NewsItem]:
-    """Most recent N items within the last `hours` — drives the AI summary."""
+def top_for_summary(
+    db: Session, hours: int = 24, per_source: int = 3, max_total: int = 15
+) -> list[NewsItem]:
+    """Round-robin top items per source for the AI summary.
+
+    Without this, a high-velocity feed (MarketWatch) crowds out quieter ones
+    (Fed, CNBC) when picking strictly by recency. We take up to `per_source`
+    newest items per active source, then merge by recency and cap at
+    `max_total`. This guarantees every active source is represented in the
+    LLM input while still keeping the most recent items first.
+    """
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     q = (
         select(NewsItem)
@@ -99,9 +108,24 @@ def top_for_summary(db: Session, hours: int = 24, limit: int = 8) -> list[NewsIt
             | (NewsItem.published_at.is_(None) & (NewsItem.fetched_at >= cutoff))
         )
         .order_by(NewsItem.published_at.desc().nullslast(), NewsItem.fetched_at.desc())
-        .limit(limit)
     )
-    return list(db.execute(q).scalars())
+    rows = list(db.execute(q).scalars())
+
+    by_source: dict[str, list[NewsItem]] = {}
+    for item in rows:
+        by_source.setdefault(item.source, []).append(item)
+
+    selected: list[NewsItem] = []
+    for items in by_source.values():
+        selected.extend(items[:per_source])
+
+    # Re-sort by best-available timestamp so the merged set still reads
+    # most-recent-first when handed to the LLM.
+    selected.sort(
+        key=lambda x: x.published_at or x.fetched_at,
+        reverse=True,
+    )
+    return selected[:max_total]
 
 
 def purge_old(days: int = 14) -> int:

@@ -89,7 +89,7 @@ def gather_context(db: Session) -> dict:
         logger.info("daily_report: KIS context unavailable (%s)", e)
 
     # Recent macro news (last 24h, top 8) — used for both raw report and LLM summary.
-    news_rows = news_service.top_for_summary(db, hours=24, limit=8)
+    news_rows = news_service.top_for_summary(db, hours=24)
     recent_news = [
         {
             "source": r.source,

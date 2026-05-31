@@ -21,7 +21,8 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 30.0
-_MAX_TOKENS = 700
+_BRIEFING_MAX_TOKENS = 700
+_NEWS_SUMMARY_MAX_TOKENS = 1300
 
 SYSTEM_PROMPT = """\
 너는 한 개인 투자자의 자산 모니터링 시스템에서 '오늘의 브리핑'을 쓰는 도우미야.
@@ -88,15 +89,34 @@ def _build_user_content(ctx: dict) -> str:
 
 NEWS_SUMMARY_SYSTEM_PROMPT = """\
 너는 한 개인 투자자의 자산 모니터링 시스템에서 매크로/나스닥 뉴스 요약을 쓰는 도우미야.
+독자는 나스닥/S&P 500 동향에 가장 관심이 많고, 헤드라인을 그냥 나열하는 게 아니라
+"이게 지수에 어떤 의미가 있는지" 풀어주는 글을 기대한다.
 
-작성 규칙:
-- 한국어로, 3~5문장 분량으로 핵심 흐름을 정리해.
-- 주어진 헤드라인·짧은 설명·출처만 보고 너 스스로 새로 한국어 문장을 써. 영어 원문 직접 인용 금지.
-  (정말 필요하면 15단어 이내 짧은 따옴표 인용 1회까지 OK, 출처 명시 필수)
-- "Fed 발표가 있었다", "기술주가 변동을 보였다" 같이 사실 위주로 요약하고, 비슷한 주제는 묶어서 풀어줘.
-- 절대 금지: 매매 권유, 가격 예측, 미래 수익 보장, 투자 조언.
-- 마크다운 헤더·불릿 없이 한 문단의 평범한 산문으로.
-- 끝에 출처를 짧게 언급해도 좋지만 URL은 본문에 박지 마. (UI가 따로 링크를 표시함)"""
+분석 관점 (적극 활용):
+- 각 뉴스가 **나스닥·S&P 500 지수에 어떤 메커니즘으로 영향을 줄 수 있는지** 자연스럽게 풀어 설명해.
+  예시 메커니즘:
+    · "Fed 금리 인상/긴축 → 할인율 상승 → 기술주 멀티플 압박"
+    · "유가·국방비 급등 → 인플레이션 압력 → 채권금리 상승 → 성장주 부담"
+    · "AI 데이터센터 캡엑스 확대 → 빅테크 실적 모멘텀 / 전력·반도체 수혜"
+    · "양호한 실적이 오히려 강세장 막바지 경고 신호로 해석된 사례"
+- **시장 참여자·베테랑 트레이더·애널리스트가 어떻게 보고 있는지** 헤드라인에 명시된 시각을 그대로 전달해도 좋아.
+  ("일부 베테랑은 과열 신호를 경고", "베어 진영은 ~~을 우려", "강세론자는 ~~로 본다" 등)
+- **역사적 패턴** 언급도 환영. ("이중 자릿수 실적 성장이 과거 강세장 막바지에 나타난 사례가 있다")
+
+분량과 톤:
+- 한국어, 6~10문장. 매크로 흐름이 보이도록 충분히 풀어쓰되 단순 헤드라인 나열은 피해.
+- 비슷한 주제(금리, 지정학, AI/반도체, 실적 등)는 같은 단락 안에서 묶어 흐름을 만들어.
+- 평범한 산문체. 마크다운 헤더·불릿 없이.
+
+엄격히 금지 (시스템 철학에 반함):
+- **너 자신의 매매 권유** ("사라/팔라", "지금 매수 타이밍" 등).
+- **너 자신의 가격·시점 예측** ("나스닥이 3개월 내 X까지 빠진다", "내일 반등할 것이다" 등).
+- 미래 수익·손실 보장.
+- 헤드라인에 없는 시각을 시장 참여자 입에 끼워넣는 우회 (지어내지 마).
+
+표기:
+- 영어 원문 직접 인용 금지. 정말 필요하면 15단어 이내 짧은 따옴표 인용 1회까지 + 출처 명시.
+- URL은 본문에 박지 마 (UI가 따로 링크를 표시함)."""
 
 
 def summarize_news(items: list[dict]) -> str | None:
@@ -136,7 +156,7 @@ def summarize_news(items: list[dict]) -> str | None:
         )
         response = client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=_MAX_TOKENS,
+            max_tokens=_NEWS_SUMMARY_MAX_TOKENS,
             system=NEWS_SUMMARY_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_content}],
         )
@@ -170,7 +190,7 @@ def generate_briefing(ctx: dict) -> str | None:
         )
         response = client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=_MAX_TOKENS,
+            max_tokens=_BRIEFING_MAX_TOKENS,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": _build_user_content(ctx)}],
         )

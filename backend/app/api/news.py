@@ -82,7 +82,7 @@ def get_news_summary(db: DbDep):
     if _summary_cache is not None and (now - _summary_cache_at) < _SUMMARY_TTL:
         return NewsSummaryOut(**_summary_cache)
 
-    rows = news_service.top_for_summary(db, hours=24, limit=8)
+    rows = news_service.top_for_summary(db, hours=24)
     items_out = [_row_to_out(r) for r in rows]
 
     if not settings.anthropic_api_key:

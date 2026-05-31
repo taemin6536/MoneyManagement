@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # Default: macro/Nasdaq-focused mix from licensed RSS sources only.
     news_rss_feeds: str = (
         "Yahoo Finance|https://finance.yahoo.com/news/rssindex,"
-        "MarketWatch|https://feeds.content.dowjones.io/public/rss/mw_topstories,"
+        "MarketWatch|https://feeds.content.dowjones.io/public/rss/mw_marketpulse,"
         "CNBC Markets|https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839069,"
         "Federal Reserve|https://www.federalreserve.gov/feeds/press_all.xml,"
         "BLS|https://www.bls.gov/feed/news_release/empsit.rss"
