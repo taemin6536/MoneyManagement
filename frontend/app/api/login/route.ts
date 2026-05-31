@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { publicUrl } from "@/lib/public-url";
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -26,9 +27,7 @@ function safeNext(next: string | null): string {
 
 export async function POST(req: NextRequest) {
   if (!authConfigured()) {
-    // Dev mode (no secrets set) — auth is bypassed; landing on POST /api/login
-    // is unexpected. Redirect home as a no-op.
-    return NextResponse.redirect(new URL("/", req.url), { status: 303 });
+    return NextResponse.redirect(publicUrl(req, "/"), { status: 303 });
   }
 
   const form = await req.formData();
@@ -37,14 +36,14 @@ export async function POST(req: NextRequest) {
 
   const expected = process.env.SINGLE_USER_PASSWORD ?? "";
   if (!password || !expected || !constantTimeEqual(password, expected)) {
-    const url = new URL("/login", req.url);
+    const url = publicUrl(req, "/login");
     url.searchParams.set("error", "invalid");
     if (next !== "/") url.searchParams.set("next", next);
     return NextResponse.redirect(url, { status: 303 });
   }
 
   const token = await signSession(process.env.SESSION_SECRET!);
-  const res = NextResponse.redirect(new URL(next, req.url), { status: 303 });
+  const res = NextResponse.redirect(publicUrl(req, next), { status: 303 });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

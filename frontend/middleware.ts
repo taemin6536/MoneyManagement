@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { publicUrl } from "@/lib/public-url";
 import { SESSION_COOKIE, authConfigured, verifySession } from "@/lib/session";
 
 const PUBLIC_PREFIXES = ["/login", "/api/login", "/api/logout"];
@@ -20,7 +21,7 @@ export async function middleware(req: NextRequest) {
   if (ok) return NextResponse.next();
 
   // Unauthenticated: redirect to /login with ?next=<original>
-  const loginUrl = new URL("/login", req.url);
+  const loginUrl = publicUrl(req, "/login");
   const nextPath = req.nextUrl.pathname + req.nextUrl.search;
   if (nextPath !== "/") loginUrl.searchParams.set("next", nextPath);
   return NextResponse.redirect(loginUrl);
