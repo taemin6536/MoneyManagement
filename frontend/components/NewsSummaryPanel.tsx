@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { fetchNewsSummary, type NewsSummary } from "@/lib/api";
+import { MarkdownText } from "./MarkdownText";
 
 type State =
   | { kind: "idle" }
@@ -76,9 +77,9 @@ export function NewsSummaryPanel() {
 
       {hasResult && state.kind === "done" && (
         <>
-          <p className="text-[13.5px] leading-relaxed whitespace-pre-line">
-            {state.data.summary}
-          </p>
+          <div className="text-mm-text">
+            <MarkdownText>{state.data.summary!}</MarkdownText>
+          </div>
           {state.data.items.length > 0 && (
             <div className="border-t border-mm-border-soft pt-3">
               <div className="text-[10px] uppercase tracking-[0.6px] text-mm-text-mute mb-2">

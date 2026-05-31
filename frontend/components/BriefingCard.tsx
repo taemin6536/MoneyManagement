@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { fetchBriefing, type Briefing } from "@/lib/api";
+import { MarkdownText } from "./MarkdownText";
 
 type State =
   | { kind: "idle" }
@@ -75,9 +76,9 @@ export function BriefingCard() {
 
       {hasResult && state.kind === "done" && (
         <>
-          <p className="text-[13.5px] leading-relaxed whitespace-pre-line">
-            {state.data.briefing}
-          </p>
+          <div className="text-mm-text">
+            <MarkdownText>{state.data.briefing!}</MarkdownText>
+          </div>
           <div className="text-[10px] text-mm-text-mute">
             {state.data.model} · {new Date(state.data.generated_at).toLocaleTimeString("ko-KR")}
           </div>

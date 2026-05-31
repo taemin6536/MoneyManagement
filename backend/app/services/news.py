@@ -90,7 +90,7 @@ def available_sources(db: Session) -> list[str]:
 
 
 def top_for_summary(
-    db: Session, hours: int = 24, per_source: int = 3, max_total: int = 15
+    db: Session, hours: int = 24, per_source: int = 5, max_total: int = 20
 ) -> list[NewsItem]:
     """Round-robin top items per source for the AI summary.
 
