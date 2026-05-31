@@ -121,9 +121,11 @@ export default async function DashboardPage() {
           <article className="rounded-card border border-mm-border bg-mm-surface p-[18px]">
             <header className="mb-3">
               <h3 className="font-semibold">Allocation</h3>
-              <div className="text-[11px] text-mm-text-mute">By position weight</div>
+              <div className="text-[11px] text-mm-text-mute">
+                보유 종목 + USD·KRW 예수금 (USD 환산 기준)
+              </div>
             </header>
-            <AllocationDonut holdings={portfolio.holdings} />
+            <AllocationDonut portfolio={portfolio} />
           </article>
         </div>
       )}
