@@ -369,6 +369,42 @@ export async function fetchBriefing() {
   return get<Briefing>("/api/briefing");
 }
 
+export type NewsItem = {
+  id: number;
+  source: string;
+  title: string;
+  description: string | null;
+  link: string;
+  published_at: string | null;
+  fetched_at: string;
+};
+
+export type NewsList = {
+  items: NewsItem[];
+  sources: string[];
+};
+
+export async function fetchNews(opts?: { limit?: number; source?: string; days?: number }) {
+  const qs = new URLSearchParams();
+  if (opts?.limit) qs.set("limit", String(opts.limit));
+  if (opts?.source) qs.set("source", opts.source);
+  if (opts?.days) qs.set("days", String(opts.days));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<NewsList>(`/api/news${suffix}`);
+}
+
+export type NewsSummary = {
+  available: boolean;
+  summary: string | null;
+  items: NewsItem[];
+  model: string;
+  generated_at: string;
+};
+
+export async function fetchNewsSummary() {
+  return get<NewsSummary>("/api/news/summary");
+}
+
 export type Sparkline = { symbol: string; days: number; closes: number[] };
 
 export async function fetchSparkline(symbol: string, days = 30) {

@@ -86,6 +86,69 @@ def _build_user_content(ctx: dict) -> str:
     return "\n".join(lines)
 
 
+NEWS_SUMMARY_SYSTEM_PROMPT = """\
+너는 한 개인 투자자의 자산 모니터링 시스템에서 매크로/나스닥 뉴스 요약을 쓰는 도우미야.
+
+작성 규칙:
+- 한국어로, 3~5문장 분량으로 핵심 흐름을 정리해.
+- 주어진 헤드라인·짧은 설명·출처만 보고 너 스스로 새로 한국어 문장을 써. 영어 원문 직접 인용 금지.
+  (정말 필요하면 15단어 이내 짧은 따옴표 인용 1회까지 OK, 출처 명시 필수)
+- "Fed 발표가 있었다", "기술주가 변동을 보였다" 같이 사실 위주로 요약하고, 비슷한 주제는 묶어서 풀어줘.
+- 절대 금지: 매매 권유, 가격 예측, 미래 수익 보장, 투자 조언.
+- 마크다운 헤더·불릿 없이 한 문단의 평범한 산문으로.
+- 끝에 출처를 짧게 언급해도 좋지만 URL은 본문에 박지 마. (UI가 따로 링크를 표시함)"""
+
+
+def summarize_news(items: list[dict]) -> str | None:
+    """Summarize a list of news items into a Korean paragraph.
+
+    `items` shape: [{source, title, description, link, published_at}, ...]
+    Returns None if no key, no items, or any API failure (caller falls back
+    to a plain headline list).
+    """
+    if not items:
+        return None
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        logger.info("anthropic_client: no API key; skipping news summary")
+        return None
+
+    try:
+        import anthropic
+    except ImportError:
+        logger.warning("anthropic_client: anthropic package not installed")
+        return None
+
+    # Build a structured prompt — title + short description + source only.
+    # Link is intentionally NOT included so the model can't paste URLs in the body.
+    lines = ["다음은 최근 매크로/나스닥 뉴스 헤드라인이야. 한국어로 종합 요약해줘.", ""]
+    for i, it in enumerate(items, 1):
+        lines.append(f"[{i}] ({it.get('source', '?')}) {it.get('title', '')}")
+        desc = it.get("description")
+        if desc:
+            lines.append(f"    설명: {desc}")
+    user_content = "\n".join(lines)
+
+    try:
+        client = anthropic.Anthropic(
+            api_key=settings.anthropic_api_key,
+            timeout=_TIMEOUT_SECONDS,
+        )
+        response = client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=_MAX_TOKENS,
+            system=NEWS_SUMMARY_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        text = "".join(
+            block.text for block in response.content if block.type == "text"
+        ).strip()
+        return text or None
+    except Exception as e:  # noqa: BLE001
+        logger.warning("anthropic_client: news summary failed: %s", e)
+        return None
+
+
 def generate_briefing(ctx: dict) -> str | None:
     """Generate a Korean briefing from the daily context. Returns None on
     missing key or any failure (caller falls back to the numeric report)."""

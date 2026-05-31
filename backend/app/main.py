@@ -9,6 +9,7 @@ from app.api.briefing import router as briefing_router
 from app.api.contributions import router as contributions_router
 from app.api.health import router as health_router
 from app.api.market import router as market_router
+from app.api.news import router as news_router
 from app.api.portfolio import router as portfolio_router
 from app.config import get_settings
 from app.scheduler import shutdown as shutdown_scheduler
@@ -52,6 +53,7 @@ app.include_router(portfolio_router)
 app.include_router(contributions_router)
 app.include_router(backtest_router)
 app.include_router(briefing_router)
+app.include_router(news_router)
 
 
 @app.get("/")

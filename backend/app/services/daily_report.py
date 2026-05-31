@@ -14,7 +14,7 @@ from app.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations import anthropic_client, fgi, kis, slack, telegram
 from app.services import contributions as contributions_service
-from app.services import fx, market_data, signals
+from app.services import fx, market_data, news as news_service, signals
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,21 @@ def gather_context(db: Session) -> dict:
     except kis.KisError as e:
         logger.info("daily_report: KIS context unavailable (%s)", e)
 
+    # Recent macro news (last 24h, top 8) — used for both raw report and LLM summary.
+    news_rows = news_service.top_for_summary(db, hours=24, limit=8)
+    recent_news = [
+        {
+            "source": r.source,
+            "title": r.title,
+            "description": r.description,
+            "link": r.link,
+            "published_at": r.published_at.isoformat() if r.published_at else None,
+        }
+        for r in news_rows
+    ]
+
     return {
+        "recent_news": recent_news,
         "date": datetime.now(timezone.utc).date().isoformat(),
         "qqq_price": qqq.close if qqq else None,
         "qqq_ath": ath.ath_price if ath else None,
@@ -193,6 +207,20 @@ def build_report(db: Session) -> tuple[str, str]:
     if narrative:
         lines.append("*🤖 오늘의 브리핑*")
         lines.append(narrative)
+        lines.append("")
+
+    # Macro news section (between briefing and raw numbers).
+    news_items = ctx.get("recent_news") or []
+    if news_items:
+        lines.append("*📰 매크로 뉴스 (최근 24시간)*")
+        summary = anthropic_client.summarize_news(news_items)
+        if summary:
+            lines.append(summary)
+        else:
+            # Fallback: list top 5 headlines + source. No URLs in body for Slack
+            # readability (UI surfaces them).
+            for it in news_items[:5]:
+                lines.append(f"• ({it['source']}) {it['title']}")
         lines.append("")
 
     lines.extend(_render_raw_lines(ctx))

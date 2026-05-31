@@ -16,6 +16,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.services.daily_report import send_daily_report
+from app.services.news import poll_all_feeds as poll_news_feeds
+from app.services.news import purge_old as purge_old_news
 from app.services.orchestrator import poll_and_evaluate
 from app.services.portfolio import run_daily_snapshot_job
 
@@ -58,6 +60,25 @@ def start() -> BackgroundScheduler:
         coalesce=True,
         replace_existing=True,
     )
+    # News: poll RSS feeds every 30 minutes (polite cadence for syndicated feeds).
+    scheduler.add_job(
+        _safe_news_poll,
+        IntervalTrigger(minutes=30),
+        id="news_poll",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=120,
+        replace_existing=True,
+    )
+    # News retention: daily KST 04:00 = UTC 19:00. Drops items older than 14 days.
+    scheduler.add_job(
+        _safe_news_purge,
+        CronTrigger(hour=19, minute=0, timezone="UTC"),
+        id="news_purge",
+        max_instances=1,
+        coalesce=True,
+        replace_existing=True,
+    )
     scheduler.start()
     _scheduler = scheduler
     logger.info("Scheduler started.")
@@ -94,3 +115,19 @@ def _safe_poll_and_evaluate() -> None:
         logger.info("tick: %s", result)
     except Exception:
         logger.exception("poll_and_evaluate failed")
+
+
+def _safe_news_poll() -> None:
+    try:
+        result = poll_news_feeds()
+        logger.info("news_poll: %s", result)
+    except Exception:
+        logger.exception("news_poll failed")
+
+
+def _safe_news_purge() -> None:
+    try:
+        n = purge_old_news(days=14)
+        logger.info("news_purge: removed=%d", n)
+    except Exception:
+        logger.exception("news_purge failed")

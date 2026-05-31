@@ -2,6 +2,7 @@ import { AllocationDonut } from "@/components/AllocationDonut";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BriefingCard } from "@/components/BriefingCard";
 import { HoldingsTable } from "@/components/HoldingsTable";
+import { NewsCard } from "@/components/NewsCard";
 import { OverheatedSignalsCard } from "@/components/OverheatedSignalsCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PortfolioHero } from "@/components/PortfolioHero";
@@ -10,6 +11,7 @@ import { SymbolDrawdownCard } from "@/components/SymbolDrawdownCard";
 import { TacticalCard } from "@/components/TacticalCard";
 import {
   fetchEquityCurve,
+  fetchNews,
   fetchOverheatedSignals,
   fetchPortfolio,
   fetchRsiHistory,
@@ -17,6 +19,7 @@ import {
   fetchSymbolSummary,
   fetchTacticalBalance,
   type EquityCurve,
+  type NewsList,
   type OverheatedSignals,
   type Portfolio,
   type RsiHistory,
@@ -51,7 +54,7 @@ export default async function DashboardPage() {
   );
 
   // Round 2 — everything else in parallel.
-  const [equity, tactical, signals, rsi, qqq, tqqq, qld, ...sparkResults] =
+  const [equity, tactical, signals, rsi, qqq, tqqq, qld, news, ...sparkResults] =
     await Promise.all([
       safe<EquityCurve>(() => fetchEquityCurve(365, "USD")),
       safe<TacticalBalance>(fetchTacticalBalance),
@@ -60,6 +63,7 @@ export default async function DashboardPage() {
       safe<SymbolSummary>(() => fetchSymbolSummary("QQQ")),
       safe<SymbolSummary>(() => fetchSymbolSummary("TQQQ")),
       safe<SymbolSummary>(() => fetchSymbolSummary("QLD")),
+      safe<NewsList>(() => fetchNews({ limit: 3 })),
       ...symbolsToSpark.map((s) => safe<Sparkline>(() => fetchSparkline(s, 30))),
     ]);
 
@@ -83,6 +87,8 @@ export default async function DashboardPage() {
       />
 
       <BriefingCard />
+
+      <NewsCard data={news} />
 
       {portfolio && portfolio.configured && equity ? (
         <PortfolioHero portfolio={portfolio} equity={equity.points} />

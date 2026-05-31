@@ -181,3 +181,27 @@ class TacticalBuy(Base):
     )
 
     __table_args__ = (Index("ix_tactical_buys_date", "buy_date"),)
+
+
+class NewsItem(Base):
+    """A single news headline from an RSS feed.
+
+    We store only what RSS publishers explicitly provide for syndication
+    (title, short description, link, published time). No full article text —
+    that's the publisher's copyrighted content and goes via the link only.
+    """
+
+    __tablename__ = "news_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(2000))
+    link: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    category: Mapped[str | None] = mapped_column(String(32))
+
+    __table_args__ = (Index("ix_news_published_at_desc", "published_at"),)
