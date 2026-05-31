@@ -37,6 +37,7 @@ services:
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5}
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-}
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
@@ -56,6 +57,9 @@ services:
       TZ: Asia/Seoul
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
       INTERNAL_API_BASE_URL: http://backend:8000
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SINGLE_USER_PASSWORD: ${SINGLE_USER_PASSWORD:-}
+      BACKEND_INTERNAL_TOKEN: ${BACKEND_INTERNAL_TOKEN:-}
     volumes:
       - ./frontend/app:/app/app
       - ./frontend/lib:/app/lib

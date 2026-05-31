@@ -1,7 +1,44 @@
-const BASE_URL =
+/**
+ * API routing.
+ *
+ * - Server-side (Next.js page.tsx / server components): hit the backend
+ *   directly at INTERNAL_API_BASE_URL with the X-Internal-Token header.
+ * - Client-side (browser): use the same-origin BFF proxy at /api/be/...
+ *   The session middleware gates it; the proxy forwards with the token.
+ *
+ * Browser never sees the backend URL or the internal token.
+ */
+
+const IS_SERVER = typeof window === "undefined";
+const BACKEND_DIRECT =
   process.env.INTERNAL_API_BASE_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8000";
+
+function buildUrl(path: string): string {
+  if (IS_SERVER) return `${BACKEND_DIRECT}${path}`;
+  // /api/foo → /api/be/foo (proxy). Non-/api paths (none in practice) pass through.
+  if (path.startsWith("/api/")) return path.replace(/^\/api\//, "/api/be/");
+  return path;
+}
+
+function buildHeaders(extra?: HeadersInit): Headers {
+  const h = new Headers(extra);
+  if (IS_SERVER && process.env.BACKEND_INTERNAL_TOKEN) {
+    h.set("x-internal-token", process.env.BACKEND_INTERNAL_TOKEN);
+  }
+  return h;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(buildUrl(path), {
+    cache: "no-store",
+    ...init,
+    headers: buildHeaders(init?.headers),
+  });
+  if (!res.ok) throw new Error(`${init?.method ?? "GET"} ${path} ${res.status}`);
+  return res.json() as Promise<T>;
+}
 
 export type HealthResponse = {
   status: string;
@@ -31,9 +68,31 @@ export type AlertRow = {
 };
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`${path} ${res.status}`);
-  return res.json() as Promise<T>;
+  return request<T>(path);
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function del<T>(path: string): Promise<T> {
+  return request<T>(path, { method: "DELETE" });
+}
+
+async function postEmpty<T>(path: string): Promise<T> {
+  return request<T>(path, { method: "POST" });
 }
 
 export async function fetchHealth() {
@@ -198,27 +257,11 @@ export async function postContribution(payload: {
   core_pct?: string;
   note?: string;
 }) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/contributions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`POST /api/contributions ${res.status}`);
-  return res.json() as Promise<Contribution>;
+  return postJson<Contribution>("/api/contributions", payload);
 }
 
 export async function deleteContribution(id: number) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/contributions/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`DELETE /api/contributions/${id} ${res.status}`);
-  return res.json();
+  return del<unknown>(`/api/contributions/${id}`);
 }
 
 export async function fetchTacticalDeposits(limit = 50) {
@@ -251,27 +294,11 @@ export async function fetchKrwCashHistory(limit = 50) {
 }
 
 export async function postKrwCash(payload: { as_of_date: string; amount_krw: string; note?: string }) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/krw-cash`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`POST /api/krw-cash ${res.status}`);
-  return res.json() as Promise<KrwSnapshot>;
+  return postJson<KrwSnapshot>("/api/krw-cash", payload);
 }
 
 export async function deleteKrwCash(id: number) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/krw-cash/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`DELETE /api/krw-cash/${id} ${res.status}`);
-  return res.json();
+  return del<unknown>(`/api/krw-cash/${id}`);
 }
 
 export async function postTacticalDeposit(payload: {
@@ -280,27 +307,11 @@ export async function postTacticalDeposit(payload: {
   fx_rate?: string;
   note?: string;
 }) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/tactical/deposits`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`POST /api/tactical/deposits ${res.status}`);
-  return res.json() as Promise<TacticalDeposit>;
+  return postJson<TacticalDeposit>("/api/tactical/deposits", payload);
 }
 
 export async function deleteTacticalDeposit(id: number) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/tactical/deposits/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`DELETE /api/tactical/deposits/${id} ${res.status}`);
-  return res.json();
+  return del<unknown>(`/api/tactical/deposits/${id}`);
 }
 
 export async function postTacticalBuy(payload: {
@@ -310,17 +321,7 @@ export async function postTacticalBuy(payload: {
   rule_level?: string;
   note?: string;
 }) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/tactical/buys`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`POST /api/tactical/buys ${res.status}`);
-  return res.json() as Promise<TacticalBuy>;
+  return postJson<TacticalBuy>("/api/tactical/buys", payload);
 }
 
 export type BacktestStats = {
@@ -455,36 +456,17 @@ export async function patchTrade(
   id: number,
   payload: { note?: string | null; rule_level?: string | null },
 ) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(`${BASE_URL}/api/trades/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`PATCH /api/trades/${id} ${res.status}`);
-  return res.json() as Promise<Trade>;
+  return patchJson<Trade>(`/api/trades/${id}`, payload);
 }
 
 export async function syncTradesFromKis(daysBack: number = 365) {
-  const BASE_URL =
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
-  const res = await fetch(
-    `${BASE_URL}/api/dev/trades-sync?days_back=${daysBack}`,
-    { method: "POST" },
-  );
-  if (!res.ok) throw new Error(`trades-sync ${res.status}`);
-  return res.json() as Promise<{
+  return postEmpty<{
     fetched: number;
     inserted: number;
     days_back: number;
     start: string;
     end: string;
-  }>;
+  }>(`/api/dev/trades-sync?days_back=${daysBack}`);
 }
 
 export type Sparkline = { symbol: string; days: number; closes: number[] };

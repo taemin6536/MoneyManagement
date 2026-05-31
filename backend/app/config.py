@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins; default covers local dev.
     cors_origins: str = "http://localhost:3000"
 
+    # Shared token between Next.js BFF and FastAPI. When set, FastAPI rejects
+    # any request to /api/* without a matching X-Internal-Token header. Leave
+    # empty in local dev to bypass the guard (docker compose works without setup).
+    backend_internal_token: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

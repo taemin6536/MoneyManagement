@@ -163,6 +163,14 @@ export function Sidebar({
           <div className="mt-[10px] text-[10px] text-mm-text-mute">
             {version} · {buildTs}
           </div>
+          <form action="/api/logout" method="POST" className="mt-3">
+            <button
+              type="submit"
+              className="w-full rounded border border-mm-border-soft px-2 py-1.5 text-[11px] text-mm-text-dim hover:bg-mm-surface-2"
+            >
+              로그아웃
+            </button>
+          </form>
         </div>
       </div>
     </aside>

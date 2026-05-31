@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+import hmac
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.backtest import router as backtest_router
 from app.api.briefing import router as briefing_router
@@ -47,6 +49,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Internal-token guard: when configured, every /api/* call must arrive with a
+# matching X-Internal-Token header. Set by the Next.js BFF proxy. /health and
+# / are exempt so Fly health checks keep working. Local dev (token unset)
+# bypasses the guard.
+_INTERNAL_GUARD_EXEMPT = ("/", "/health")
+
+
+@app.middleware("http")
+async def internal_token_middleware(request: Request, call_next):
+    expected = settings.backend_internal_token
+    if not expected:
+        return await call_next(request)  # bypass when unset (local dev)
+    if request.url.path in _INTERNAL_GUARD_EXEMPT:
+        return await call_next(request)
+    provided = request.headers.get("x-internal-token", "")
+    if not hmac.compare_digest(provided, expected):
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    return await call_next(request)
 
 app.include_router(health_router)
 app.include_router(market_router)
